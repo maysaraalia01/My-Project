@@ -1,0 +1,170 @@
+#include <iostream>
+#include "dateType.h"
+using namespace std;
+
+dateType::dateType()
+{
+	date[0] = 1;
+}
+
+void dateType::set_date()
+{
+	cout << "Please Enter date as -DD/MM/YYYY- : " << endl;
+	for (int i = 0; i < 3; i++)
+	{
+		cin >> date[i];
+	}
+	if (date[0] > 31)
+	{
+		cout << "WRONG DAY!" << endl;
+		set_date();
+	}
+	else if (date[1] > 12)
+	{
+		cout << "WRONG MONTH!" << endl;
+		set_date();
+	}
+	
+}
+
+void dateType::return_date()
+{
+	for (int i = 0; i < 3; i++)
+	{
+		cout << date[i];
+		if (i < 2)
+			cout << "/";
+	}
+	cout << endl;
+}
+
+bool dateType::leap()
+{
+	if ((date[2] % 4) == 0)
+	{
+		cout << "Leap year!" << endl;
+		return 1;
+	}
+	else
+		cout << "NOT leap year!" << endl;
+}
+
+void dateType::num_daysMO()
+{
+	month[0] = 31;
+
+	if ((date[2] % 4) == 0)
+		month[1] = 29;
+	else
+		month[1] = 28;
+
+	month[2] = 31;
+	month[3] = 30;
+	month[4] = 31;
+	month[5] = 30;
+	month[6] = 31;
+	month[7] = 31;
+	month[8] = 30;
+	month[9] = 31;
+	month[10] = 30;
+	month[11] = 31;
+
+	switch (date[1])
+	{
+	case 1:
+		cout << "number of days in this month is " << month[date[1] - 1] << endl;
+		break;
+
+	case 2:
+		cout << "number of days in this month is " << month[date[1] - 1] << endl;
+		break;
+		
+	case 3:
+		cout << "number of days in this month is " << month[date[1] - 1] << endl;
+		break;
+
+	case 4:
+		cout << "number of days in this month is " << month[date[1] - 1] << endl;
+		break;
+
+	case 5:
+		cout << "number of days in this month is " << month[date[1] - 1] << endl;
+		break;
+
+	case 6:
+		cout << "number of days in this month is " << month[date[1] - 1] << endl;
+		break;
+
+	case 7:
+		cout << "number of days in this month is " << month[date[1] - 1] << endl;
+		break;
+
+	case 8:
+		cout << "number of days in this month is " << month[date[1] - 1] << endl;
+		break;
+
+	case 9:
+		cout << "number of days in this month is " << month[date[1] - 1] << endl;
+		break;
+
+	case 10:
+		cout << "number of days in this month is " << month[date[1] - 1] << endl;
+		break;
+
+	case 11:
+		cout << "number of days in this month is " << month[date[1] - 1] << endl;
+		break;
+
+	case 12:
+		cout << "number of days in this month is " << month[date[1] - 1] << endl;
+		break;
+	}
+}
+
+void dateType::num_daysPassed()
+{
+	int dayPass = date[0];
+	for (int i = date[1] - 2; i >= 0; i--)
+	{
+		dayPass += month[i];
+	}
+	cout << "The number of days passed in this year is : " << dayPass << endl;
+}
+
+void dateType::num_daysRemaining()
+{
+	int dayRem = date[0];
+	for (int i = date[1]; i <= 11; i++)
+	{
+		dayRem += month[i];
+	}
+	cout << "The number of days remaining in this year is : " << dayRem << endl;
+}
+
+void dateType::new_date()
+{
+	int Newdate[3];
+	int days = 0;
+	int yearsDif = 0;
+	cout << "Please enter the new date : ";
+	for (int i = 0; i < 3; i++)
+	{
+		cin >> Newdate[i];
+	}
+	days = (month[date[1] - 1] - date[0]) + Newdate[0];
+	if (date[2] > Newdate[2])
+	{
+		yearsDif = date[2] - Newdate[2];
+		days = -(yearsDif * 365);
+	}
+	else if (date[2] < Newdate[2])
+	{
+		yearsDif = Newdate[2] - date[2];
+		days = (yearsDif * 365);
+	}
+	for (int i = date[1]; i < Newdate[1] - 1; i++)
+	{
+			days += month[i];
+	}
+	cout << "The number of days remaining to the new date is : " << days << endl;
+}
