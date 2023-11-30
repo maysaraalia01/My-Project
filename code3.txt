@@ -1,0 +1,83 @@
+#include "claendaTyper.h"
+#include <iostream>
+void calendarType::set_MO_YR()
+{
+	o1.set_date();
+	year = dateType::date[2];
+	monthS = extDateType::month;
+}
+
+
+int calendarType::firstDayOfMonth()
+{
+	
+	int x1, x2, x3;
+	x1 = (year - 1) / 4;
+	x2 = (year - 1) / 100;
+	x3 = (year - 1) / 400;
+	firstDay = (year + x1 - x2 + x3) % 7;
+
+	return firstDay;
+}
+
+void calendarType::print_calendar()
+{
+	int month[12];
+
+	month[0] = 31;
+
+	if ((year % 4) == 0)
+		month[1] = 29;
+	else
+		month[1] = 28;
+
+	month[2] = 31;
+	month[3] = 30;
+	month[4] = 31;
+	month[5] = 30;
+	month[6] = 31;
+	month[7] = 31;
+	month[8] = 30;
+	month[9] = 31;
+	month[10] = 30;
+	month[11] = 31;
+
+	if (monthS == "January")
+		mo = 1;
+	if (monthS == "February")
+		mo = 2;
+	if (monthS == "March")
+		mo = 3;
+	if (monthS == "April")
+		mo = 4;
+	if (monthS == "May")
+		mo = 5;
+	if (monthS == "June")
+		mo = 6;
+	if (monthS == "July")
+		mo = 7;
+	if (monthS == "August")
+		mo = 8;
+	if (monthS == "September ")
+		mo = 9;
+	if (monthS == "October")
+		mo = 10;
+	if (monthS == "November")
+		mo = 11;
+	if (monthS == "December")
+		mo = 12;
+
+	setDay d;
+	d.return_day();
+
+	for (int i = 1; i <= month[1]; i++)
+	{
+		if (i % 7 == 0)
+			cout << endl;
+		if (i >= firstDay)
+			cout << i;
+		else
+			cout << "  ";
+		cout << "   ";
+	}
+}
