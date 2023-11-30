@@ -1,0 +1,432 @@
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <iomanip>
+#include <map>
+#include <vector>
+#include <list>
+#include <algorithm>
+using namespace std;
+
+
+
+struct Instruction {
+        string loc = "";
+        string label = "";
+        string operation = "";
+        string operand = "";
+        string OpjectCode = "";
+};
+
+class assembler {
+    map<int, Instruction> program;
+    
+public:
+    int Error = 0;
+    void read();
+    void PrintTable();
+    string ConvToHexa(int D);
+    int ConvToDesimal(string H);
+    void GetLoc();
+    void GetOpjectCode();
+    string OperationInst(string O);
+    string CharToHexa(char c);
+    int str_to_int(const string& str);
+    void GetOpjectProgram();
+    void SymbolTable();
+    void CheckForErrors();
+};
+
+void assembler::read() {
+    ifstream input_file("source.txt");
+
+    string line;
+    vector<string> fields;
+    while (getline(input_file, line)) {
+        istringstream ss(line);
+        fields = { istream_iterator<string>{ss}, istream_iterator<string>{} };
+        int address = stoi(fields[0]);
+        string label = fields.size() > 1 && !isdigit(fields[1][0]) ? fields[1] : "";
+        string operation = fields.size() > 2 ? fields[2] : "";
+        string operand = fields.size() > 3 ? fields[3] : "";
+        program[address] = { "", label, operation, operand, "" };
+    }
+    input_file.close();
+}
+
+void assembler::PrintTable()
+{
+    for (auto it = program.begin(); it != program.end(); ++it) {
+        cout << it->first << "\t\t" << it->second.loc << "\t\t" << it->second.label
+            << "\t\t" << it->second.operation << "\t\t" << it->second.operand << "\t\t" << it->second.OpjectCode << '\n';
+    }
+}
+
+string assembler::ConvToHexa(int D) {
+    stringstream hexa;
+    hexa << hex << D;
+    return hexa.str();
+}
+
+int assembler::ConvToDesimal(string H) {
+    int decimal;
+    stringstream ss;
+    ss << hex << H;
+    ss >> decimal;
+    return decimal;
+}
+
+void assembler::GetLoc()
+{
+    for (auto it = program.begin(); it != program.end(); ++it)
+    {
+        if (program[it->first].operation == "START") {
+            int NewLoc = ConvToDesimal(program[it->first].operand);
+            program[it->first].loc = ConvToHexa(NewLoc);
+        }
+        else if (program[prev(it)->first].operation == "START") {
+            int NewLoc = ConvToDesimal(program[prev(it)->first].operand);
+            program[it->first].loc = ConvToHexa(NewLoc);
+        }
+        else if (program[prev(it)->first].operation == "BYTE")
+        {
+            string Byte = program[prev(it)->first].operand;
+            if (Byte[0] == 'C')
+            {
+                int NewLoc = ConvToDesimal(program[prev(it)->first].loc);
+                NewLoc += Byte.size() - 3;
+                program[it->first].loc = ConvToHexa(NewLoc);
+            }
+            else if (Byte[0] == 'X')
+            {
+                int NewLoc = ConvToDesimal(program[prev(it)->first].loc);
+                NewLoc += (Byte.size() - 3) / 2;
+                program[it->first].loc = ConvToHexa(NewLoc);
+            }
+        }
+        else if (program[prev(it)->first].operation == "RESB")
+        {
+            string op = program[prev(it)->first].operand;
+            int NewLoc = str_to_int(op) + ConvToDesimal(program[prev(it)->first].loc);
+            program[it->first].loc = ConvToHexa(NewLoc);
+        }
+        else
+        {
+            int NewLoc = ConvToDesimal(program[prev(it)->first].loc) + 3;
+            program[it->first].loc = ConvToHexa(NewLoc);
+        }
+    }
+}
+
+int assembler::str_to_int(const string& str)
+{
+    int num = 0;
+    for (int i = 0; i < str.length(); i++)
+    {
+        if (str[i] < '0' || str[i] > '9')
+        {
+            continue;
+        }
+        num = num * 10 + (str[i] - '0');
+    }
+    return num;
+}
+
+void assembler::GetOpjectCode()
+{
+    for (auto it = program.begin(); it != program.end(); ++it)
+    {
+        if (program[it->first].operation == "RSUB")
+        {
+            program[it->first].OpjectCode = "4C0000";
+        }
+        else if (program[it->first].operation == "WORD")
+        {
+            string O = program[it->first].operand;
+            int op = str_to_int(O);
+            string O2 = ConvToHexa(op);
+            for (int i = 0; i <= 5 - O2.size(); i++)
+                program[it->first].OpjectCode.push_back('0');
+            program[it->first].OpjectCode += O2;
+        }
+        else if (program[it->first].operation == "RESB" || program[it->first].operation == "RESW"
+            || program[it->first].operation == "END" || program[it->first].operation == "START")
+            program[it->first].OpjectCode = "";
+
+        else if (program[it->first].operation == "BYTE")
+        {
+            if (program[it->first].operand[0] == 'X')
+            {
+                for (int i = 2; i < program[it->first].operand.size() - 1; i++)
+                    program[it->first].OpjectCode += program[it->first].operand[i];
+            }
+            else if (program[it->first].operand[0] == 'C')
+            {
+                for (int i = 2; i < program[it->first].operand.size() - 1; i++)
+                    program[it->first].OpjectCode += CharToHexa(program[it->first].operand[i]);
+            }
+        }
+        else if (program[it->first].operand[program[it->first].operand.size() - 1] ==
+            'X' && program[it->first].operand[program[it->first].operand.size() - 2] == ',')
+        {
+            string oprd;
+            for (int i = 0; i < program[it->first].operand.size() - 2; i++)
+                oprd += program[it->first].operand[i];
+
+            program[it->first].OpjectCode += OperationInst(program[it->first].operation);
+            string loc;
+            int L = 0;
+            for (auto it2 = program.begin(); it2 != program.end(); ++it2) {
+                if (program[it2->first].label == oprd) {
+                    loc = program[it2->first].loc;
+                    break;
+                }
+            }
+            L = ConvToDesimal(loc) + 32768;
+            program[it->first].OpjectCode += ConvToHexa(L);
+        }
+        else
+        {
+            program[it->first].OpjectCode += OperationInst(program[it->first].operation);
+            string oprd = program[it->first].operand;
+            for (auto it2 = program.begin(); it2 != program.end(); ++it2) {
+                if (program[it2->first].label == oprd) {
+                    program[it->first].OpjectCode += program[it2->first].loc;
+                    break;
+                }
+            }
+        }
+    }
+}
+
+string assembler::OperationInst(string O)
+{   
+         if (O == "ADD") return "18";     else if (O == "ADDF") return "58";    else if (O == "AND") return "90";//3
+    else if (O == "COMP")return "28";     else if (O == "COMPF")return "88";    else if (O == "DIV") return "24";//6
+    else if (O == "DIVF")return "64";     else if (O == "J")    return "3C";    else if (O == "JEQ") return "30";//9
+    else if (O == "JGT") return "34";     else if (O == "JLT")  return "38";    else if (O == "JSUB")return "48";//12
+    else if (O == "LDA") return "00";     else if (O == "LDB")  return "68";    else if (O == "LDCH")return "50";//15
+    else if (O == "LDF") return "70";     else if (O == "LDL")  return "08";    else if (O == "LDS") return "6C";//18
+    else if (O == "LDT") return "74";     else if (O == "LDX")  return "04";    else if (O == "LPS") return "D0";//21
+    else if (O == "MUL") return "20";     else if (O == "MULF") return "60";    else if (O == "OR")  return "44";//24
+    else if (O == "RD")  return "D8";     else if (O == "RSUB") return "4C";    else if (O == "SSK") return "EC";//27
+    else if (O == "STA") return "0C";     else if (O == "STB")  return "78";    else if (O == "STCH")return "54";//30
+    else if (O == "STF") return "80";     else if (O == "STI")  return "D4";    else if (O == "STL") return "14";//33
+    else if (O == "STS") return "7C";     else if (O == "STSW") return "E8";    else if (O == "STT") return "84";//36
+    else if (O == "STX") return "10";     else if (O == "SUB")  return "1C";    else if (O == "SUBF")return "5C";//39
+    else if (O == "TD")  return "E0";     else if (O == "TIX")  return "2C";    else if (O == "WD")  return "DC";//42
+    else return "ERROR";
+}
+
+string assembler::CharToHexa(char c)
+{
+    stringstream ss;
+    ss << setfill('0') << setw(2) << hex << (int)(unsigned char)c;
+    return ss.str();
+}
+
+void assembler::GetOpjectProgram()
+{
+    string ProgramName;
+    string StartingAdd = "00";
+    string LengthOfProg = "00";
+    for (auto it = program.begin(); it != program.end(); ++it)
+    {
+        if (program[it->first].operation == "START") 
+        {
+            ProgramName = program[it->first].label;
+            StartingAdd += program[it->first].loc;
+            string EndLoc;
+            for (auto it2 = program.begin(); it2 != program.end(); ++it2) 
+            {
+                if (program[it2->first].operation == "END") 
+                {
+                    EndLoc = program[it2->first].loc;
+                    break;
+                }
+            }
+            int LenInINT = ConvToDesimal(EndLoc) - ConvToDesimal(StartingAdd);
+            LengthOfProg += ConvToHexa(LenInINT);
+            break;
+        }
+    }
+    cout << "H^" << ProgramName << "  ^" << StartingAdd << "^" << LengthOfProg << endl;
+
+    string LineRec = "T^" + StartingAdd + "^**^";
+    string LenOfObjectCode;
+    int count = 0;
+    string PrevLoc;
+    string DtoH;
+    for (auto it = program.begin(); it != program.end(); ++it)
+    {
+        if (program[it->first].operation == "RESW" || program[it->first].operation == "RESB")
+        {
+            if (LineRec == "T^00" + PrevLoc + "^**^")
+            {
+                LineRec = "T^00" + program[next(it)->first].loc + "^**^";
+                PrevLoc = program[next(it)->first].loc;
+                continue;
+            }
+            else
+            {
+                DtoH = ConvToHexa(count);
+                for (int i = 9, j = 0; i < 11; i++, j++)
+                    LineRec[i] = DtoH[j];
+                cout << LineRec << endl;
+                LineRec = "T^00" + program[next(it)->first].loc + "^**^";
+                count = 0;
+                PrevLoc = program[next(it)->first].loc;
+            }
+        }
+        else if (count >= 30 || count == 29 || count == 28)
+        {
+            DtoH = ConvToHexa(count);
+            for (int i = 9, j = 0; i < 11; i++, j++)
+                LineRec[i] = DtoH[j];
+            cout << LineRec << endl;
+            LineRec = "T^00" + program[it->first].loc + "^**^";
+            count = 0;
+            --it;
+        }
+        else
+        {
+            LineRec += program[it->first].OpjectCode + "^";
+            count += program[it->first].OpjectCode.size() / 2;
+        }
+    }
+    if (count < 28)
+    {
+        DtoH = "0";
+        DtoH += ConvToHexa(count);
+        for (int i = 9, j = 0; i < 11; i++, j++)
+            LineRec[i] = DtoH[j];
+        cout << LineRec << endl;
+    }
+
+    for (auto it = program.begin(); it != program.end(); ++it)
+    {
+        if (program[it->first].operation == "END" && program[it->first].operand == "-")
+        {
+            cout << "E" << endl;
+        }
+        else if(program[it->first].operation == "END")
+            cout << "E^" << StartingAdd << endl;
+    }
+}
+
+void assembler::SymbolTable()
+{
+    for (auto it = program.begin(); it != program.end(); ++it)
+    {
+        if (program[it->first].label != "-")
+        {
+            cout << program[it->first].label << "\t\t" << program[it->first].loc << "\n";
+        }
+    }
+}
+
+void assembler::CheckForErrors()
+{
+    for (auto it = program.begin(); it != program.end(); ++it)
+    {
+        int LabelErrorLine = 0;
+        int LError = 0;
+        if (program[it->first].operand.size() >= 2 &&
+            program[it->first].operand[program[it->first].operand.size() - 2] == ',')
+        {
+            continue;//****
+        }
+        else if (program[it->first].operation != "RESW" && program[it->first].operation != "RESB" 
+            && program[it->first].operation != "START" && program[it->first].operation != "WORD"
+            && program[it->first].operation != "BYTE" )
+        {
+            for (auto it2 = program.begin(); it2 != program.end(); ++it2)
+            {
+                if (program[it->first].operand == program[it2->first].label)
+                {
+                    LError++;
+                    break;
+                }  
+            }
+            if (!LError)
+                LabelErrorLine = it->first;
+        }
+        if (!LError && LabelErrorLine != 0)
+        {
+            Error++;
+            cout << "ERROR : IN LINE -> " << LabelErrorLine << " \n\t\tOPERAND IS INCORRECT." << endl;
+            LError = 0;
+        }
+    }
+    for (auto it = program.begin(); it != program.end(); ++it)
+    {
+        int OPError = 0;
+        int OPErrorLine = 0;
+        if (program[it->first].operation != "RESW" && program[it->first].operation != "RESB" &&
+            program[it->first].operation != "START" && program[it->first].operation != "WORD" && 
+            program[it->first].operation != "END" && program[it->first].operation != "BYTE")
+        {
+            if (OperationInst(program[it->first].operation) == "ERROR")
+            {
+                OPError++;
+                OPErrorLine = it->first;
+            }
+        }
+        
+        if (OPError && OPErrorLine != 0)
+        {
+            Error++;
+            cout << "ERROR : IN LINE -> " << OPErrorLine << " \n\t\tOPERATION IS INCORRECT." << endl;
+        }
+    }
+    
+    for (auto it = program.begin(); it != program.end(); ++it)
+    {
+        int LabelLineError = 0;
+        int LABError = 0;
+        if (program[it->first].label != "-")
+        {
+            for (auto it2 = program.begin(); it2 != program.end(); ++it2)
+            {
+                if (program[it->first].label == program[it2->first].label && it->first != it2->first)
+                {
+                    LABError++;
+                    LabelLineError = it->first;
+                }
+            }
+        } 
+        if (LABError && LabelLineError != 0)
+        {
+            Error++;
+            cout << "ERROR : IN LINE -> " << LabelLineError 
+                << " \n\t\tLABEL IS REPETED IN ANOTHER LINE." << endl;
+        }
+    }
+}
+
+void main()
+{
+	assembler a1;
+    a1.read();
+    a1.CheckForErrors();
+    if (!a1.Error)
+    {
+        a1.GetLoc();
+        a1.GetOpjectCode();
+        cout << "\n                    ******** THE SIC ASSEMBLER LANGUGE PROGRAM ********\n\n";
+        cout << "LINE" << "\t\t" << "LOC" << "\t\t" << "LABEL" << "\t\t" << "OPERATION" << "\t" 
+            << "OPERAND" << "\t\t" << "OPJECT CODE" << "\n\n";
+        a1.PrintTable();
+
+
+        cout << "\n\n\n";
+        cout << "******** THE SYMBOLE TABLE ********\n\n";
+        a1.SymbolTable();
+
+
+        cout << "\n\n\n";
+        cout << "                       ******** THE OPJECT PROGRAM ********\n\n";
+        a1.GetOpjectProgram();
+    }
+ 
+} 
