@@ -1,0 +1,24 @@
+#include <iostream>
+#include "extdateType.h"
+using namespace std;
+
+void extDateType::return_month_string()
+{
+	cout << month << endl;
+}
+
+void extDateType::set_date()
+{
+
+	dateType::set_date();
+	month = MO[dateType::date[1] - 1];
+}
+void extDateType::return_date_withString()
+{
+	cout << month << " " << date[0] << "," << date[2] << endl;
+}
+
+void extDateType::return_date_withString2()
+{
+	cout << month << " " << date[2] << endl;
+}
